@@ -22,7 +22,7 @@ for title in titles:
     #parent_pub = json.loads(subprocess.check_output([
     #    scholar, '-c', '1', '-p', title, '-t', '--json_form'
     #]))
-    #print '\t#citations = {}'.format(parent_pub['num_citations'])
+    #print '#citations = {}'.format(parent_pub['num_citations'])
     #cluster_id = parent_pub['cluster_id'] #'9071217946286299275'
     #raw_cites = subprocess.check_output([
     #    scholar, '--cites', cluster_id, '--json_form'
@@ -30,26 +30,31 @@ for title in titles:
     #child_pubs = json.loads('\n'.join([
     #    '[', raw_cites.replace('}\n{', '},\n{'), ']'
     #]))
-    #print '\t#child_pubs = {}'.format(len(child_pubs))
+    #print '#child_pubs = {}'.format(len(child_pubs))
     #child_pubs_pdf = filter(None, [
     #    child_pub['url_pdf'] for child_pub in child_pubs
     #])
     child_pubs_pdf = ['http://arxiv.org/pdf/1407.7789'] # TEST
-    print '\t#child_pubs_pdf = {}'.format(len(child_pubs_pdf))
+    print '#child_pubs_pdf = {}'.format(len(child_pubs_pdf))
     for pdfurl in child_pubs_pdf:
-        pdfpath = os.path.basename(pdfurl) + '.pdf'
+        pdfpath = os.path.join('papers', os.path.basename(pdfurl) + '.pdf')
         if not os.path.exists(pdfpath):
-            print 'download ...'
+            print 'downloading {}'.format(pdfpath)
             with open(pdfpath, 'wb') as output:
                 output.write(urlopen(pdfurl).read())
-        print 'parse ...'
-        text = ' '.join(get_pages(pdfpath))
-        print 'extract ...'
+        print 'parsing {}'.format(pdfpath)
+        pages = get_pages(pdfpath)
+        text = ' '.join(pages)
+        print 'extracting MP paragraphs from {}'.format(pdfpath)
         for long_paragraph in text.split('\n\n'):
             for paragraph in long_paragraph.split('.\n'):
-                paragraph = unicodedata.normalize("NFKC", unicode(paragraph.replace('-\n', '')))
-                #paragraph = re.sub(r'\W+[space]', '', paragraph)
-                #paragraph = re.sub('[^a-zA-Z0-9\n\.]', ' ', paragraph)
+                paragraph = unicodedata.normalize(
+                    "NFKC", paragraph.replace('-\n', '').decode('UTF-8')
+                ).encode('ascii','ignore')
                 if 'Materials Project' in paragraph:
                     print '================'
-                    print repr(paragraph)
+                    paragraphs = []
+                    for line in paragraph.split('\n'):
+                        if len(line.replace(' ', '')) > 21:
+                            paragraphs.append(line.replace('\n', ''))
+                    print ' '.join(paragraphs)

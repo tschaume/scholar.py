@@ -106,9 +106,9 @@ def save_image (lt_image, page_number, images_folder):
                 file_name = ''.join([str(page_number), '_', lt_image.name, file_ext])
                 if write_file(images_folder, file_name, file_stream, flags='wb'):
                     result = file_name
-            else:
-                print 'Image is jbig2 encoded sth like data without any encapsulate format. Show the attributes: '
-                print lt_image.stream.attrs
+            #else:
+            #    print 'Image is jbig2 encoded sth like data without any encapsulate format. Show the attributes: '
+            #    print lt_image.stream.attrs
     return result
 
 
@@ -164,8 +164,8 @@ def parse_lt_objs (lt_objs, page_number, images_folder, text=[]):
             if saved_file:
                 # use html style <img /> tag to mark the position of the image within the text
                 text_content.append('<img src="'+os.path.join(images_folder, saved_file)+'" />')
-            else:
-                print >> sys.stderr, "error saving image on page", page_number, lt_obj.__repr__
+            #else:
+            #    print >> sys.stderr, "error saving image on page", page_number, lt_obj.__repr__
         elif isinstance(lt_obj, LTFigure):
             # LTFigure objects are containers for other LT* objects, so recurse through the children
             text_content.append(parse_lt_objs(lt_obj, page_number, images_folder, text_content))

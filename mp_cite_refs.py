@@ -13,11 +13,10 @@ from layout_scanner import get_pages
 from markdownwriter import *
 
 output_file = open('mp_cite_refs.md', 'w+')
-dry = True # dry run, no google scholar queries
 scholar = './scholar.py'
 titles = [
     'The Materials Project: A materials genome approach to accelerating materials innovation',
-    #'A high-throughput infrastructure for density functional theory calculations',
+    'A high-throughput infrastructure for density functional theory calculations',
 ]
 
 md = MarkdownWriter()
@@ -29,7 +28,7 @@ for idx,title in enumerate(titles):
     parent_pub = None
     test_filepath_parent = 'test_files/parent_{}.json'.format(idx)
     test_filepath_childs = 'test_files/childs_{}.json'.format(idx)
-    if not dry:
+    if not os.path.exists(test_filepath_parent):
         parent_pub = json.loads(subprocess.check_output([
             scholar, '-c', '1', '-p', title, '-t', '--json_form'
         ]))
@@ -47,7 +46,7 @@ for idx,title in enumerate(titles):
     cluster_id = parent_pub['cluster_id']
     print 'GS ClusterId = {}'.format(cluster_id)
     child_pubs = None
-    if not dry:
+    if not os.path.exists(test_filepath_childs):
         raw_cites = subprocess.check_output([
             scholar, '--cites', cluster_id, '--json_form'
         ])
@@ -106,7 +105,7 @@ for idx,title in enumerate(titles):
                     md.addParagraph(' '.join(paragraphs), 1)
         nr_child_pubs_pdfs += 1
     print '#child PDFs parsed = {}'.format(nr_child_pubs_pdfs)
-    output_file.write(unicodedata.normalize(
-        "NFKC", md.getStream()
-    ).encode('ascii','ignore'))
-    output_file.close()
+output_file.write(unicodedata.normalize(
+    "NFKC", md.getStream()
+).encode('ascii','ignore'))
+output_file.close()

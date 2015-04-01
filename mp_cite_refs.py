@@ -69,7 +69,6 @@ for idx,title in enumerate(titles):
         images_folder = os.path.join('images', pdfbase)
         pdfpath = os.path.join('papers', pdfbase + '.pdf')
         if not os.path.exists(pdfpath):
-            continue # TODO remove
             print 'downloading {}'.format(pdfpath)
             with open(pdfpath, 'wb') as output:
                 output.write(urlopen(pdfurl).read())

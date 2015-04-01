@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # https://github.com/dpapathanasiou/pdfminer-layout-scanner
 # https://github.com/LaoLiulaoliu/pdfminer-layout-scanner
-# export PYTHONPATH=../../others/pdfminer-layout-scanner:$PYTHONPATH
 # pip install -U beautifulsoup4
 # pip install -e git+git@github:euske/pdfminer.git@master#egg=pdfminer
 
 # also tried slate, content-extractor, pdftotext
 
 import subprocess, json, os, re, unicodedata
+from datetime import datetime
 from urllib import urlopen
 from layout_scanner import get_pages
 from markdownwriter import *
@@ -21,6 +21,9 @@ titles = [
 ]
 
 md = MarkdownWriter()
+timestamp = datetime.now()
+md.addText('{}'.format(timestamp))
+md.addDoubleLineBreak()
 
 for idx,title in enumerate(titles):
     parent_pub = None
@@ -35,7 +38,7 @@ for idx,title in enumerate(titles):
     else:
         with open(test_filepath_parent, 'r') as infile:
             parent_pub = json.load(infile)
-    md.addHeader(parent_pub['title'], 1)
+    md.addHeader(parent_pub['title'], 2)
     md.addLink(parent_pub['url'], 'URL', 'URL')
     md.addText(', {}, {} citations'.format(
         parent_pub['year'], parent_pub['num_citations']
@@ -64,8 +67,14 @@ for idx,title in enumerate(titles):
             continue # TODO: non-arxiv papers
         pdfbase = os.path.basename(pdfurl)
         images_folder = os.path.join('images', pdfbase)
+        pdfpath = os.path.join('papers', pdfbase + '.pdf')
+        if not os.path.exists(pdfpath):
+            continue # TODO remove
+            print 'downloading {}'.format(pdfpath)
+            with open(pdfpath, 'wb') as output:
+                output.write(urlopen(pdfurl).read())
         md.addDoubleLineBreak()
-        md.addHeader(child_pub['title'], 2)
+        md.addHeader(child_pub['title'], 3)
         md.addLink(child_pub['url'], 'URL', 'URL')
         md.addText(', ')
         md.addLink(child_pub['url_pdf'], 'PDF', 'PDF URL')
@@ -75,19 +84,16 @@ for idx,title in enumerate(titles):
             child_pub['year'], child_pub['num_citations']
         ))
         md.addDoubleLineBreak()
+        md.addHeader('excerpt', 4)
         md.addParagraph(unicodedata.normalize(
             "NFKC", child_pub['excerpt']
-        ).encode('ascii','ignore'), 1)
-        pdfpath = os.path.join('papers', pdfbase + '.pdf')
-        if not os.path.exists(pdfpath):
-            print 'downloading {}'.format(pdfpath)
-            with open(pdfpath, 'wb') as output:
-                output.write(urlopen(pdfurl).read())
+        ).encode('ascii','ignore'), 0)
         print 'parsing {}'.format(pdfpath)
         if not os.path.exists(images_folder): os.makedirs(images_folder)
         pages = get_pages(pdfpath, images_folder=images_folder)
         text = ' '.join(pages)
         print 'extracting MP paragraphs from {}'.format(pdfpath)
+        md.addHeader('paragraphs', 4)
         for long_paragraph in text.split('\n\n'):
             for paragraph in long_paragraph.split('.\n'):
                 paragraph = unicodedata.normalize(
@@ -98,9 +104,10 @@ for idx,title in enumerate(titles):
                     for line in paragraph.split('\n'):
                         if len(line.replace(' ', '')) > 21:
                             paragraphs.append(line.replace('\n', ''))
-                    md.addParagraph(' '.join(paragraphs), 2, 'italic')
+                    md.addParagraph(' '.join(paragraphs), 1)
         nr_child_pubs_pdfs += 1
-        break # TODO remove
     print '#child PDFs parsed = {}'.format(nr_child_pubs_pdfs)
-    output_file.write(md.getStream())
+    output_file.write(unicodedata.normalize(
+        "NFKC", md.getStream()
+    ).encode('ascii','ignore'))
     output_file.close()

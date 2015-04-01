@@ -10,7 +10,9 @@
 import subprocess, json, os, re, unicodedata
 from urllib import urlopen
 from layout_scanner import get_pages
+from markdownwriter import *
 
+output_file = open('mp_cite_refs.md', 'w+')
 dry = True # dry run, no google scholar queries
 scholar = './scholar.py'
 titles = [
@@ -18,12 +20,12 @@ titles = [
     #'A high-throughput infrastructure for density functional theory calculations',
 ]
 
+md = MarkdownWriter()
+
 for idx,title in enumerate(titles):
-    print title
     parent_pub = None
     test_filepath_parent = 'test_files/parent_{}.json'.format(idx)
     test_filepath_childs = 'test_files/childs_{}.json'.format(idx)
-    print 'test_filepath_parent = {}'.format(test_filepath_parent)
     if not dry:
         parent_pub = json.loads(subprocess.check_output([
             scholar, '-c', '1', '-p', title, '-t', '--json_form'
@@ -33,6 +35,11 @@ for idx,title in enumerate(titles):
     else:
         with open(test_filepath_parent, 'r') as infile:
             parent_pub = json.load(infile)
+    md.addHeader(parent_pub['title'], 1)
+    md.addLink(parent_pub['url'], 'URL', 'URL')
+    md.addText(', {}, {} citations'.format(
+        parent_pub['year'], parent_pub['num_citations']
+    ))
     print '#citations = {}'.format(parent_pub['num_citations'])
     cluster_id = parent_pub['cluster_id']
     print 'GS ClusterId = {}'.format(cluster_id)
@@ -50,21 +57,33 @@ for idx,title in enumerate(titles):
         with open(test_filepath_childs, 'r') as infile:
             child_pubs = json.load(infile)
     print '#child_pubs = {}'.format(len(child_pubs))
-    child_pubs_pdf = [
-        child_pub['url_pdf'] for child_pub in child_pubs
-        if child_pub['url_pdf'] is not None and \
-        'arxiv' in child_pub['url_pdf'] # TODO: non-arxiv papers
-    ]
-    print '#child_pubs_pdf on arXiv = {}'.format(len(child_pubs_pdf))
-    for pdfurl in child_pubs_pdf:
+    nr_child_pubs_pdfs = 0
+    for child_pub in child_pubs:
+        pdfurl = child_pub['url_pdf']
+        if pdfurl is None or 'arxiv' not in pdfurl:
+            continue # TODO: non-arxiv papers
         pdfbase = os.path.basename(pdfurl)
+        images_folder = os.path.join('images', pdfbase)
+        md.addDoubleLineBreak()
+        md.addHeader(child_pub['title'], 2)
+        md.addLink(child_pub['url'], 'URL', 'URL')
+        md.addText(', ')
+        md.addLink(child_pub['url_pdf'], 'PDF', 'PDF URL')
+        md.addText(', ')
+        md.addLink(images_folder, 'Images', 'Images')
+        md.addText(', {}, {} citations'.format(
+            child_pub['year'], child_pub['num_citations']
+        ))
+        md.addDoubleLineBreak()
+        md.addParagraph(unicodedata.normalize(
+            "NFKC", child_pub['excerpt']
+        ).encode('ascii','ignore'), 1)
         pdfpath = os.path.join('papers', pdfbase + '.pdf')
         if not os.path.exists(pdfpath):
             print 'downloading {}'.format(pdfpath)
             with open(pdfpath, 'wb') as output:
                 output.write(urlopen(pdfurl).read())
         print 'parsing {}'.format(pdfpath)
-        images_folder = os.path.join('images', pdfbase)
         if not os.path.exists(images_folder): os.makedirs(images_folder)
         pages = get_pages(pdfpath, images_folder=images_folder)
         text = ' '.join(pages)
@@ -75,10 +94,13 @@ for idx,title in enumerate(titles):
                     "NFKC", paragraph.replace('-\n', '').decode('UTF-8')
                 ).encode('ascii','ignore')
                 if 'Materials Project' in paragraph:
-                    print '================'
                     paragraphs = []
                     for line in paragraph.split('\n'):
                         if len(line.replace(' ', '')) > 21:
                             paragraphs.append(line.replace('\n', ''))
-                    print ' '.join(paragraphs)
+                    md.addParagraph(' '.join(paragraphs), 2, 'italic')
+        nr_child_pubs_pdfs += 1
         break # TODO remove
+    print '#child PDFs parsed = {}'.format(nr_child_pubs_pdfs)
+    output_file.write(md.getStream())
+    output_file.close()

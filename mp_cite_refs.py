@@ -2,7 +2,7 @@
 # https://github.com/dpapathanasiou/pdfminer-layout-scanner
 # https://github.com/LaoLiulaoliu/pdfminer-layout-scanner
 # pip install -U beautifulsoup4
-# pip install -e git+git@github:euske/pdfminer.git@master#egg=pdfminer
+# pip install -e git+git@github.com:euske/pdfminer.git@master#egg=pdfminer
 
 # also tried slate, content-extractor, pdftotext
 
